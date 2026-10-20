@@ -1,0 +1,299 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShopSmart | Visitor Tracking Demo</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 35px auto;
+            padding: 20px;
+            background: #f4f6f9;
+            color: #222;
+        }
+
+        header, section, #result {
+            background: white;
+            padding: 22px;
+            margin-bottom: 18px;
+            border-radius: 12px;
+        }
+
+        h1 { margin-top: 0; }
+
+        button {
+            padding: 12px 16px;
+            margin: 5px;
+            border: 0;
+            border-radius: 7px;
+            cursor: pointer;
+            background: #1769aa;
+            color: white;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .secondary { background: #555; }
+        .metric { font-size: 18px; margin: 8px 0; }
+        #result { display: none; }
+        #status { color: #444; }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>🛍️ ShopSmart Demo Store</h1>
+        <p>
+            Browse the demo store. The website will record page visits
+            and time spent, then send session data to the ML API.
+        </p>
+        <p id="status">Tracking is ready.</p>
+    </header>
+
+    <section>
+        <h2>Explore the store</h2>
+        <p>Choose what you would like to browse.</p>
+
+        <button onclick="visitPage('product')">
+            View Products
+        </button>
+
+        <button onclick="visitPage('information')">
+            Read Shopping Guide
+        </button>
+
+        <button onclick="visitPage('administrative')">
+            Open Account & Policies
+        </button>
+
+        <div id="activity">
+            <h3>Your session</h3>
+            <p class="metric">
+                Product page visits: <span id="productCount">0</span>
+            </p>
+            <p class="metric">
+                Information page visits: <span id="infoCount">0</span>
+            </p>
+            <p class="metric">
+                Account/policy visits: <span id="adminCount">0</span>
+            </p>
+            <p>
+                Time spent is tracked while this demo page is open.
+            </p>
+        </div>
+
+        <button id="predictButton" onclick="finishSession()">
+            Finish Browsing & Predict
+        </button>
+
+        <button class="secondary" onclick="resetSession()">
+            Start New Session
+        </button>
+    </section>
+
+    <section id="result">
+        <h2>Purchase Prediction</h2>
+        <p id="probability" class="metric"></p>
+        <p id="prediction" class="metric"></p>
+        <p id="explanation"></p>
+    </section>
+
+    <script>
+        const API_URL = "/predict";
+
+        const visits = {
+            administrative: 0,
+            informational: 0,
+            product: 0
+        };
+
+        const durations = {
+            administrative: 0,
+            informational: 0,
+            product: 0
+        };
+
+        let currentCategory = null;
+        let lastTimestamp = Date.now();
+        let sessionFinished = false;
+
+        function recordElapsedTime() {
+            const now = Date.now();
+
+            if (currentCategory !== null) {
+                const seconds = (now - lastTimestamp) / 1000;
+
+                // Ignore unusually long idle periods in this demo.
+                durations[currentCategory] += Math.min(seconds, 1800);
+            }
+
+            lastTimestamp = now;
+        }
+
+        function visitPage(category) {
+            if (sessionFinished) {
+                alert("Start a new session to continue browsing.");
+                return;
+            }
+
+            recordElapsedTime();
+
+            currentCategory = category;
+            visits[category] += 1;
+
+            document.getElementById("productCount").textContent =
+                visits.product;
+
+            document.getElementById("infoCount").textContent =
+                visits.informational;
+
+            document.getElementById("adminCount").textContent =
+                visits.administrative;
+
+            const labels = {
+                product: "Product pages",
+                information: "Information pages",
+                administrative: "Account and policy pages"
+            };
+
+            document.getElementById("status").textContent =
+                "Currently browsing: " + labels[category];
+        }
+
+        async function finishSession() {
+            if (sessionFinished) return;
+
+            recordElapsedTime();
+
+            const totalPageViews =
+                visits.administrative +
+                visits.informational +
+                visits.product;
+
+            if (totalPageViews === 0) {
+                alert("Please visit at least one section first.");
+                return;
+            }
+
+            sessionFinished = true;
+
+            const button = document.getElementById("predictButton");
+            button.disabled = true;
+            button.textContent = "Getting prediction...";
+
+            const now = new Date();
+            const monthNames = [
+                "Jan", "Feb", "Mar", "Apr", "May", "June",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+            ];
+
+            // These technical and visitor attributes are demo defaults,
+            // not automatically identified facts about the real visitor.
+            const visitorData = {
+                Administrative: visits.administrative,
+                Administrative_Duration:
+                    durations.administrative,
+
+                Informational: visits.informational,
+                Informational_Duration:
+                    durations.informational,
+
+                ProductRelated: visits.product,
+                ProductRelated_Duration:
+                    durations.product,
+
+                // Temporary proxies for this prototype.
+                // These are NOT equivalent to the dataset's original
+                // page-level bounce and exit-rate calculations.
+                BounceRates: totalPageViews === 1 ? 0.2 : 0.02,
+                ExitRates: totalPageViews === 1 ? 0.25 : 0.03,
+
+                SpecialDay: 0.0,
+                Month: monthNames[now.getMonth()],
+                OperatingSystems: 2,
+                Browser: 2,
+                Region: 1,
+                TrafficType: 2,
+                VisitorType: "New_Visitor",
+                Weekend: now.getDay() === 0 || now.getDay() === 6
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(visitorData)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        result.detail || "The prediction request failed."
+                    );
+                }
+
+                document.getElementById("result").style.display = "block";
+
+                document.getElementById("probability").textContent =
+                    "Estimated purchase probability: " +
+                    result.purchase_probability_percent + "%";
+
+                document.getElementById("prediction").textContent =
+                    "Result: " + result.prediction;
+
+                document.getElementById("explanation").textContent =
+                    "This is a model estimate, not a guarantee. " +
+                    "The session features were generated by this demo.";
+
+                document.getElementById("status").textContent =
+                    "Session sent successfully to the prediction API.";
+
+            } catch (error) {
+                sessionFinished = false;
+                button.disabled = false;
+                button.textContent = "Finish Browsing & Predict";
+
+                document.getElementById("status").textContent =
+                    "Prediction failed: " + error.message;
+            }
+        }
+
+        function resetSession() {
+            visits.administrative = 0;
+            visits.informational = 0;
+            visits.product = 0;
+
+            durations.administrative = 0;
+            durations.informational = 0;
+            durations.product = 0;
+
+            currentCategory = null;
+            lastTimestamp = Date.now();
+            sessionFinished = false;
+
+            document.getElementById("productCount").textContent = "0";
+            document.getElementById("infoCount").textContent = "0";
+            document.getElementById("adminCount").textContent = "0";
+
+            document.getElementById("result").style.display = "none";
+
+            const button = document.getElementById("predictButton");
+            button.disabled = false;
+            button.textContent = "Finish Browsing & Predict";
+
+            document.getElementById("status").textContent =
+                "New session started. Tracking is ready.";
+        }
+    </script>
+</body>
+</html>
