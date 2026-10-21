@@ -58,3 +58,41 @@ def test_invalid_bounce_rate_is_rejected():
     response = client.post("/predict", json=invalid_visitor)
 
     assert response.status_code == 422
+
+
+def test_missing_required_field_is_rejected():
+    visitor = VALID_VISITOR.copy()
+    del visitor["Month"]
+
+    response = client.post("/predict", json=visitor)
+
+    assert response.status_code == 422
+
+
+def test_negative_bounce_rate_is_rejected():
+    visitor = VALID_VISITOR.copy()
+    visitor["BounceRates"] = -0.1
+
+    response = client.post("/predict", json=visitor)
+
+    assert response.status_code == 422
+
+
+def test_same_input_returns_same_prediction():
+    first_response = client.post("/predict", json=VALID_VISITOR)
+    second_response = client.post("/predict", json=VALID_VISITOR)
+
+    assert first_response.status_code == 200
+    assert second_response.status_code == 200
+
+    first_result = first_response.json()
+    second_result = second_response.json()
+
+    assert (
+        first_result["purchase_probability"]
+        == second_result["purchase_probability"]
+    )
+    assert (
+        first_result["predicted_purchase"]
+        == second_result["predicted_purchase"]
+    )
