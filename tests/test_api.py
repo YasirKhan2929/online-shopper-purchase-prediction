@@ -145,3 +145,9 @@ def test_home_endpoint():
     assert "running" in data["message"]
     assert data["docs"] == "/docs"
     assert data["prediction_endpoint"] == "POST /predict"
+
+def test_api_documentation_is_available():
+    response = client.get("/docs")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
