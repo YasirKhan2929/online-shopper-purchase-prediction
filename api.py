@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
+from typing import Literal
 from pydantic import BaseModel, Field
 
 # Resolve file paths relative to this file, not the terminal's location.
@@ -30,6 +31,7 @@ except Exception as exc:
 
 
 # These are the features expected by your saved model.
+
 class VisitorSession(BaseModel):
     Administrative: int = Field(ge=0)
     Administrative_Duration: float = Field(ge=0)
@@ -42,13 +44,22 @@ class VisitorSession(BaseModel):
     ExitRates: float = Field(ge=0, le=1)
     SpecialDay: float = Field(ge=0, le=1)
 
-    Month: str
-    OperatingSystems: int
-    Browser: int
-    Region: int
-    TrafficType: int
-    VisitorType: str
+    Month: Literal[
+        "Aug", "Dec", "Feb", "Jul", "June",
+        "Mar", "May", "Nov", "Oct", "Sep"
+    ]
+
+    OperatingSystems: int = Field(ge=1, le=8)
+    Browser: int = Field(ge=1, le=13)
+    Region: int = Field(ge=1, le=9)
+    TrafficType: int = Field(ge=1, le=20)
+
+    VisitorType: Literal[
+        "New_Visitor", "Other", "Returning_Visitor"
+    ]
+
     Weekend: bool
+
 
 
 @app.get("/")

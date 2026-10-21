@@ -96,3 +96,19 @@ def test_same_input_returns_same_prediction():
         first_result["predicted_purchase"]
         == second_result["predicted_purchase"]
     )
+def test_invalid_month_is_rejected():
+    visitor = VALID_VISITOR.copy()
+    visitor["Month"] = "January"
+
+    response = client.post("/predict", json=visitor)
+
+    assert response.status_code == 422
+
+
+def test_invalid_visitor_type_is_rejected():
+    visitor = VALID_VISITOR.copy()
+    visitor["VisitorType"] = "Guest"
+
+    response = client.post("/predict", json=visitor)
+
+    assert response.status_code == 422
