@@ -1,15 +1,24 @@
 
+import logging
 from pathlib import Path
-from fastapi.responses import FileResponse
+from typing import Literal
+
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
-from typing import Literal
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-# Resolve file paths relative to this file, not the terminal's location.
+
+# Configure application logging.
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+# Resolve paths relative to this file.
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "models" / "purchase_prediction_model.joblib"
+
 
 app = FastAPI(
     title="Online Shopper Purchase Prediction API",
@@ -17,26 +26,32 @@ app = FastAPI(
     version="1.0.0",
 )
 
+
 # Load the trained model once when the API starts.
 try:
     saved_data = joblib.load(MODEL_PATH)
     model = saved_data["model"]
     threshold = float(saved_data["threshold"])
     feature_columns = saved_data["feature_columns"]
+
+    logger.info("Purchase prediction model loaded successfully.")
+
 except Exception as exc:
+    logger.exception("Failed to load the purchase prediction model.")
     raise RuntimeError(
         f"Could not load the saved model from {MODEL_PATH}. "
         "Check that the model file exists and is valid."
     ) from exc
 
 
-# These are the features expected by your saved model.
-
+# Validate incoming visitor session data.
 class VisitorSession(BaseModel):
     Administrative: int = Field(ge=0)
     Administrative_Duration: float = Field(ge=0)
+
     Informational: int = Field(ge=0)
     Informational_Duration: float = Field(ge=0)
+
     ProductRelated: int = Field(ge=0)
     ProductRelated_Duration: float = Field(ge=0)
 
@@ -61,7 +76,6 @@ class VisitorSession(BaseModel):
     Weekend: bool
 
 
-
 @app.get("/")
 def home():
     return {
@@ -83,14 +97,14 @@ def health():
 @app.post("/predict")
 def predict_purchase(visitor: VisitorSession):
     try:
-        # Convert incoming visitor data into a one-row DataFrame.
+        # Convert visitor data into a one-row DataFrame.
         visitor_data = visitor.model_dump()
         input_df = pd.DataFrame([visitor_data])
 
         # Match the exact feature order used during training.
         input_df = input_df[feature_columns]
 
-        # Get the model's estimated purchase probability.
+        # Calculate the estimated purchase probability.
         probability = float(model.predict_proba(input_df)[0, 1])
 
         # Apply the threshold selected during model evaluation.
@@ -112,15 +126,20 @@ def predict_purchase(visitor: VisitorSession):
         }
 
     except (KeyError, ValueError) as exc:
+        logger.warning("Invalid prediction input or feature mismatch: %s", exc)
         raise HTTPException(
             status_code=422,
-            detail=f"Input data does not match the model's expected features: {exc}",
+            detail="Input data does not match the model's expected features.",
         ) from exc
+
     except Exception as exc:
+        logger.exception("Unexpected error during purchase prediction.")
         raise HTTPException(
             status_code=500,
-            detail="Prediction failed. Check the server terminal for details.",
+            detail="Prediction failed. Check the server logs.",
         ) from exc
+
+
 @app.get("/store", include_in_schema=False)
 def store_demo():
     store_file = BASE_DIR / "store_demo.html"
@@ -128,7 +147,7 @@ def store_demo():
     if not store_file.exists():
         raise HTTPException(
             status_code=404,
-            detail="Demo store HTML file was not found."
+            detail="Demo store HTML file was not found.",
         )
 
     return FileResponse(store_file)
