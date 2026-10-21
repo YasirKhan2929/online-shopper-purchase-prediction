@@ -250,6 +250,11 @@ The classification threshold affects the balance between precision and recall. M
 - Connect the demo store to persistent session storage if a realistic end-to-end demo is needed.
 - Deploy the API and dashboards to a hosting platform.
 - Add project screenshots and an architecture diagram to the documentation.
+## System Architecture
+
+The architecture diagram explains how the dataset flows through data preparation, model training, and the saved model to the FastAPI prediction API. It also shows how the Streamlit prediction app, demo online store, analytics dashboard, and automated tests fit into the project.
+
+See the [System Architecture Diagram](documentation/architecture.md) for details.
 
 ## Author
 
