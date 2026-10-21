@@ -151,3 +151,48 @@ def test_api_documentation_is_available():
 
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
+
+
+def test_invalid_bounce_rate_type_is_rejected():
+    invalid_visitor = VALID_VISITOR.copy()
+    invalid_visitor["BounceRates"] = "hello"
+
+    response = client.post("/predict", json=invalid_visitor)
+
+    assert response.status_code == 422
+
+
+def test_exit_rate_above_one_is_rejected():
+    invalid_visitor = VALID_VISITOR.copy()
+    invalid_visitor["ExitRates"] = 1.5
+
+    response = client.post("/predict", json=invalid_visitor)
+
+    assert response.status_code == 422
+
+def test_negative_product_related_count_is_rejected():
+    invalid_visitor = VALID_VISITOR.copy()
+    invalid_visitor["ProductRelated"] = -1
+
+    response = client.post("/predict", json=invalid_visitor)
+
+    assert response.status_code == 422
+
+
+def test_negative_product_related_count_is_rejected():
+    invalid_visitor = VALID_VISITOR.copy()
+    invalid_visitor["ProductRelated"] = -1
+
+    response = client.post("/predict", json=invalid_visitor)
+
+    assert response.status_code == 422
+
+
+def test_negative_product_related_duration_is_rejected():
+    invalid_visitor = VALID_VISITOR.copy()
+    invalid_visitor["ProductRelated_Duration"] = -10.0
+
+    response = client.post("/predict", json=invalid_visitor)
+
+    assert response.status_code == 422
+
