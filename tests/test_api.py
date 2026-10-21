@@ -125,3 +125,23 @@ def test_prediction_failure_returns_safe_error():
         "Prediction failed. Check the server logs."
     )
     assert "Internal model failure" not in response.text
+
+
+def test_health_endpoint():
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "healthy"
+    assert data["model_loaded"] is True
+    assert data["threshold"] == 0.6
+
+
+def test_home_endpoint():
+    response = client.get("/")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "running" in data["message"]
+    assert data["docs"] == "/docs"
+    assert data["prediction_endpoint"] == "POST /predict"
