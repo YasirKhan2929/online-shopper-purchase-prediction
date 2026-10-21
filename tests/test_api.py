@@ -1,4 +1,4 @@
-
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from api import app
@@ -112,3 +112,16 @@ def test_invalid_visitor_type_is_rejected():
     response = client.post("/predict", json=visitor)
 
     assert response.status_code == 422
+
+def test_prediction_failure_returns_safe_error():
+    with patch(
+        "api.model.predict_proba",
+        side_effect=RuntimeError("Internal model failure"),
+    ):
+        response = client.post("/predict", json=VALID_VISITOR)
+
+    assert response.status_code == 500
+    assert response.json()["detail"] == (
+        "Prediction failed. Check the server logs."
+    )
+    assert "Internal model failure" not in response.text
