@@ -28,13 +28,3 @@ flowchart TD
     class E,J api
     class F,G,I ui
 ```
-
-## Step 3 — Save and preview
-
-1. Press **Ctrl + S**.
-2. In VS Code, open the Markdown preview with **Ctrl + Shift + V**.
-3. If Mermaid doesn't render in your preview, that's okay; GitHub supports Mermaid diagrams directly in Markdown files.
-
-Your diagram shows the difference between **training a model** and **using the saved model for predictions**, which is an important concept for AI/ML engineering interviews.
-
-When you've saved the file, tell me. Next, we'll link `architecture.md` from your main `README.md` and push the changes to GitHub.
